@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Poin Daur Ulang Botol</title>
+    <style>
+        :root {
+            --theme-green: #28a745;
+            --theme-dark-green: #218838;
+            --bg-color: #f4f6f3;
+            --font-color: #333;
+            --card-bg: white;
+            --border-color: #e0e0e0;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            background-color: var(--bg-color);
+            margin: 0;
+            padding: 15px;
+            color: var(--font-color);
+        }
+        .container {
+            background: var(--card-bg);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+            width: 100%;
+            max-width: 450px;
+            margin: 0 auto;
+            box-sizing: border-box;
+        }
+        h1 { text-align: center; color: var(--theme-dark-green); margin-top: 0; }
+        #video-container {
+            position: relative;
+            width: 100%;
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            overflow: hidden;
+            background: #000;
+        }
+        video { width: 100%; height: auto; display: block; }
+        #last-scan-info {
+            text-align: center;
+            margin-top: 15px;
+            padding: 10px;
+            background: #e9f5ec;
+            border-radius: 6px;
+            min-height: 50px;
+            border: 1px solid #c8e6c9;
+        }
+        
+        /* Modal (Popup) Styling */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0; top: 0;
+            width: 100%; height: 100%;
+            background-color: rgba(0,0,0,0.5);
+            justify-content: center;
+            align-items: center;
+        }
+        .modal-content {
+            background: var(--card-bg);
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+        }
+        .modal-content h2 { margin-top: 0; color: var(--theme-dark-green); }
+        .modal-content input {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            box-sizing: border-box;
+        }
+        .modal-content button {
+            width: 100%;
+            padding: 12px;
+            font-size: 1em;
+            font-weight: bold;
+            color: white;
+            background-color: var(--theme-green);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        .modal-content button:hover {
+            background-color: var(--theme-dark-green);
+        }
+        .struk-print { display: none; }
+
+        /* CSS KHUSUS UNTUK PRINT TANDA TERIMA */
+        @media print {
+            body { padding: 0; margin: 0; background-color: white; }
+            .container, .modal { display: none; }
+            .struk-print {
+                display: block;
+                font-family: 'Courier New', Courier, monospace;
+                width: 100%;
+                font-size: 10pt;
+            }
+            .struk-header, .struk-footer { text-align: center; margin-bottom: 10px; }
+            .struk-item { padding: 5px 0; border-top: 1px dashed black; }
+            .struk-item .jenis { font-size: 11pt; }
+            .struk-item .nilai { font-size: 12pt; font-weight: bold; text-align: right; }
+            .struk-footer { border-top: 1px dashed black; padding-top: 5px; margin-top: 10px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>♻️ Poin Daur Ulang</h1>
+        <div id="video-container">
+            <video id="video" playsinline></video>
+        </div>
+        <div id="last-scan-info">
+            <p>Arahkan kamera ke barcode botol...</p>
+        </div>
+    </div>
+
+    <div id="botol-modal" class="modal">
+        <div class="modal-content">
+            <h2>🍾 Tambah Jenis Botol Baru</h2>
+            <p>Barcode <strong id="barcode-baru"></strong> tidak terdaftar.</p>
+            <input type="text" id="botol-jenis" placeholder="Contoh: Botol PET 600ml" required>
+            <input type="number" id="botol-nilai" placeholder="Nilai Deposit (mis: 500)" required>
+            <button id="simpan-botol">Simpan & Cetak Tanda Terima</button>
+        </div>
+    </div>
+
+    <div class="struk-print" id="struk-area">
+        <div class="struk-header">
+            <h3>Pusat Daur Ulang Anda</h3>
+            <p>Tanda Terima Deposit</p>
+            <p id="struk-tanggal"></p>
+            <p>--------------------------------</p>
+        </div>
+        <div class="struk-item">
+            <div id="struk-jenis-botol" class="jenis"></div>
+            <div id="struk-nilai-botol" class="nilai"></div>
+        </div>
+        <div class="struk-footer">
+            <p>Terima Kasih Telah Mendaur Ulang!</p>
+        </div>
+    </div>
+
+    <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
+    <script type="text/javascript">
+        // Variabel Global
+        let botolDatabase = {};
+        const codeReader = new ZXing.BrowserMultiFormatReader();
+        let barcodeBaruSaatIni = null;
+        let isScanning = true;
+
+        // Elemen DOM
+        const lastScanInfo = document.getElementById('last-scan-info');
+        const modal = document.getElementById('botol-modal');
+        const barcodeBaruElem = document.getElementById('barcode-baru');
+        const botolJenisInput = document.getElementById('botol-jenis');
+        const botolNilaiInput = document.getElementById('botol-nilai');
+
+        // Fungsi untuk memuat database dari localStorage
+        function loadDatabaseDariLocal() {
+            const db = localStorage.getItem('botolDatabase');
+            if (db) {
+                botolDatabase = JSON.parse(db);
+                console.log('Database botol dimuat dari localStorage.');
+            } else {
+                // Pre-populate with examples if no database exists
+                botolDatabase = {
+                    '8999909012345': { jenis: 'Botol Soda 1.5L', nilai: 2500 },
+                    '8992752201017': { jenis: 'Botol Teh Kotak', nilai: 500 },
+                    '8886008101072': { jenis: 'Botol Susu UHT 250ml', nilai: 700 }
+                };
+                simpanDatabaseKeLocal();
+                console.log('Database contoh dibuat dan disimpan.');
+            }
+        }
+
+        // Fungsi untuk menyimpan database ke localStorage
+        function simpanDatabaseKeLocal() {
+            localStorage.setItem('botolDatabase', JSON.stringify(botolDatabase));
+            console.log('Database botol disimpan ke localStorage.');
+        }
+
+        // Fungsi untuk format Rupiah
+        function formatRupiah(angka) {
+            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
+        }
+
+        // Fungsi untuk mempersiapkan dan memicu cetak
+        function cetakTandaTerima(botol) {
+            document.getElementById('struk-jenis-botol').innerText = botol.jenis;
+            document.getElementById('struk-nilai-botol').innerText = formatRupiah(botol.nilai);
+            document.getElementById('struk-tanggal').innerText = new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
+
+            isScanning = false; 
+            window.print();
+        }
+        
+        window.onafterprint = () => {
+            isScanning = true;
+            console.log('Proses cetak selesai, scan dilanjutkan.');
+        };
+
+        // Fungsi untuk menampilkan popup botol baru
+        function tampilkanModalBotolBaru(barcode) {
+            isScanning = false; 
+            barcodeBaruSaatIni = barcode;
+            barcodeBaruElem.innerText = barcode;
+            modal.style.display = 'flex';
+            botolJenisInput.focus();
+        }
+
+        // Fungsi untuk menyimpan botol baru
+        function simpanBotolBaru() {
+            const jenis = botolJenisInput.value;
+            const nilai = parseInt(botolNilaiInput.value, 10);
+
+            if (!jenis || !nilai) {
+                alert('Jenis botol dan Nilai Deposit tidak boleh kosong!');
+                return;
+            }
+
+            const botolBaru = { jenis, nilai };
+            botolDatabase[barcodeBaruSaatIni] = botolBaru;
+            simpanDatabaseKeLocal();
+
+            modal.style.display = 'none';
+            botolJenisInput.value = '';
+            botolNilaiInput.value = '';
+
+            cetakTandaTerima(botolBaru);
+        }
+        
+        document.getElementById('simpan-botol').addEventListener('click', simpanBotolBaru);
+
+        // Fungsi utama untuk memulai scanner
+        function startScanner() {
+            codeReader.listVideoInputDevices()
+                .then((videoInputDevices) => {
+                    if (videoInputDevices.length === 0) {
+                        alert('Kamera tidak ditemukan!');
+                        return;
+                    }
+                    const selectedDeviceId = videoInputDevices[0].deviceId;
+                    codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
+                        if (result && isScanning) {
+                            isScanning = false;
+                            const barcode = result.text;
+                            console.log('Barcode terdeteksi:', barcode);
+
+                            const botol = botolDatabase[barcode];
+                            if (botol) {
+                                lastScanInfo.innerHTML = `<p>${botol.jenis}</p><strong>Nilai: ${formatRupiah(botol.nilai)}</strong>`;
+                                cetakTandaTerima(botol);
+                            } else {
+                                lastScanInfo.innerText = `Botol baru: ${barcode}`;
+                                tampilkanModalBotolBaru(barcode);
+                            }
+                        }
+                        if (err && !(err instanceof ZXing.NotFoundException)) {
+                            console.error(err);
+                        }
+                    });
+                })
+                .catch((err) => {
+                    console.error(err);
+                    alert("Tidak dapat mengakses kamera. Pastikan Anda memberikan izin.");
+                });
+        }
+        
+        // Inisialisasi Aplikasi
+        window.addEventListener('load', () => {
+            loadDatabaseDariLocal();
+            startScanner();
+        });
+    </script>
+</body>
+</html>
