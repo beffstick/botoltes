@@ -33,35 +33,19 @@
         }
         .header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            gap: 15px; /* Jarak antara logo dan judul */
             margin-bottom: 20px;
         }
-        .header-title-group, .header-right-group {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        .header-logo {
-            height: 40px; /* Atur tinggi logo */
-            width: auto;   /* Lebar akan menyesuaikan */
+        #school-logo {
+            height: 45px; /* Sedikit lebih besar */
+            width: auto;
+            flex-shrink: 0;
         }
         h1 {
             color: var(--theme-dark-green);
             margin: 0;
-            font-size: 1.4em;
-        }
-        #ganti-kamera {
-            display: none;
-            padding: 8px 12px;
-            font-size: 0.9em;
-            font-weight: bold;
-            color: white;
-            background-color: var(--theme-blue);
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            flex-shrink: 0;
+            font-size: 1.5em;
         }
         #video-container {
             position: relative;
@@ -72,6 +56,21 @@
             background: #000;
         }
         video { width: 100%; height: auto; display: block; }
+        
+        #ganti-kamera {
+            display: none; /* Muncul jika >1 kamera terdeteksi */
+            width: 100%;
+            padding: 10px;
+            margin-top: 15px; /* Jarak dari video */
+            font-size: 1em;
+            font-weight: bold;
+            color: white;
+            background-color: var(--theme-blue);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
         #last-scan-info {
             text-align: center;
             margin-top: 15px;
@@ -107,18 +106,16 @@
 
     <div class="container">
         <div class="header">
-            <div class="header-title-group">
-                <img id="school-logo-left" class="header-logo" src="logo.png" alt="Logo Kiri">
-                <h1>♻️ Poin Daur Ulang</h1>
-            </div>
-            <div class="header-right-group">
-                <img id="school-logo-right" class="header-logo" src="logo_kanan.png" alt="Logo Kanan" hidden>
-                <button id="ganti-kamera">🔄 Ganti Kamera</button>
-            </div>
+            <img id="school-logo" src="logo.png" alt="Logo Sekolah">
+            <h1>♻️ Poin Daur Ulang</h1>
         </div>
+
         <div id="video-container">
             <video id="video" playsinline></video>
         </div>
+
+        <button id="ganti-kamera">🔄 Ganti Kamera</button>
+
         <div id="last-scan-info">
             <p>Mendeteksi kamera...</p>
         </div>
