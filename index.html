@@ -33,19 +33,20 @@
         }
         .header {
             display: flex;
-            align-items: center;
-            gap: 15px; /* Jarak antara logo dan judul */
+            flex-direction: column; /* Mengubah arah menjadi vertikal */
+            align-items: center;    /* Menengahkan item secara horizontal */
+            gap: 10px;              /* Jarak antara logo dan judul */
             margin-bottom: 20px;
         }
         #school-logo {
-            height: 45px; /* Sedikit lebih besar */
+            height: 50px; /* Sedikit lebih besar */
             width: auto;
-            flex-shrink: 0;
         }
         h1 {
             color: var(--theme-dark-green);
             margin: 0;
             font-size: 1.5em;
+            text-align: center;
         }
         #video-container {
             position: relative;
@@ -58,10 +59,10 @@
         video { width: 100%; height: auto; display: block; }
         
         #ganti-kamera {
-            display: none; /* Muncul jika >1 kamera terdeteksi */
+            display: none;
             width: 100%;
             padding: 10px;
-            margin-top: 15px; /* Jarak dari video */
+            margin-top: 15px;
             font-size: 1em;
             font-weight: bold;
             color: white;
