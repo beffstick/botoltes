@@ -8,6 +8,7 @@
         :root {
             --theme-green: #28a745;
             --theme-dark-green: #218838;
+            --theme-blue: #007bff;
             --bg-color: #f4f6f3;
             --font-color: #333;
             --card-bg: white;
@@ -30,7 +31,28 @@
             margin: 0 auto;
             box-sizing: border-box;
         }
-        h1 { text-align: center; color: var(--theme-dark-green); margin-top: 0; }
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        h1 {
+            color: var(--theme-dark-green);
+            margin: 0;
+            font-size: 1.5em;
+        }
+        #ganti-kamera {
+            display: none; /* Hidden by default, shown by JS if needed */
+            padding: 8px 12px;
+            font-size: 0.9em;
+            font-weight: bold;
+            color: white;
+            background-color: var(--theme-blue);
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
         #video-container {
             position: relative;
             width: 100%;
@@ -90,9 +112,7 @@
             cursor: pointer;
             transition: background-color 0.2s;
         }
-        .modal-content button:hover {
-            background-color: var(--theme-dark-green);
-        }
+        .modal-content button:hover { background-color: var(--theme-dark-green); }
         .struk-print { display: none; }
 
         /* CSS KHUSUS UNTUK PRINT TANDA TERIMA */
@@ -116,12 +136,15 @@
 <body>
 
     <div class="container">
-        <h1>♻️ Poin Daur Ulang</h1>
+        <div class="header">
+            <h1>♻️ Poin Daur Ulang</h1>
+            <button id="ganti-kamera">🔄 Ganti Kamera</button>
+        </div>
         <div id="video-container">
             <video id="video" playsinline></video>
         </div>
         <div id="last-scan-info">
-            <p>Arahkan kamera ke barcode botol...</p>
+            <p>Mendeteksi kamera...</p>
         </div>
     </div>
 
@@ -153,64 +176,54 @@
 
     <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
     <script type="text/javascript">
-        // Variabel Global
+        // --- Variabel Global ---
         let botolDatabase = {};
         const codeReader = new ZXing.BrowserMultiFormatReader();
-        let barcodeBaruSaatIni = null;
         let isScanning = true;
+        let videoInputDevices = [];
+        let currentCameraIndex = 0;
 
-        // Elemen DOM
+        // --- Elemen DOM ---
         const lastScanInfo = document.getElementById('last-scan-info');
         const modal = document.getElementById('botol-modal');
         const barcodeBaruElem = document.getElementById('barcode-baru');
         const botolJenisInput = document.getElementById('botol-jenis');
         const botolNilaiInput = document.getElementById('botol-nilai');
+        const switchCameraButton = document.getElementById('ganti-kamera');
+        let barcodeBaruSaatIni = null;
 
-        // Fungsi untuk memuat database dari localStorage
+        // --- Fungsi Database (Tidak Berubah) ---
         function loadDatabaseDariLocal() {
             const db = localStorage.getItem('botolDatabase');
             if (db) {
                 botolDatabase = JSON.parse(db);
-                console.log('Database botol dimuat dari localStorage.');
             } else {
-                // Pre-populate with examples if no database exists
                 botolDatabase = {
                     '8999909012345': { jenis: 'Botol Soda 1.5L', nilai: 2500 },
                     '8992752201017': { jenis: 'Botol Teh Kotak', nilai: 500 },
                     '8886008101072': { jenis: 'Botol Susu UHT 250ml', nilai: 700 }
                 };
                 simpanDatabaseKeLocal();
-                console.log('Database contoh dibuat dan disimpan.');
             }
         }
-
-        // Fungsi untuk menyimpan database ke localStorage
         function simpanDatabaseKeLocal() {
             localStorage.setItem('botolDatabase', JSON.stringify(botolDatabase));
-            console.log('Database botol disimpan ke localStorage.');
         }
 
-        // Fungsi untuk format Rupiah
+        // --- Fungsi UI & Cetak (Tidak Berubah) ---
         function formatRupiah(angka) {
             return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
         }
-
-        // Fungsi untuk mempersiapkan dan memicu cetak
         function cetakTandaTerima(botol) {
             document.getElementById('struk-jenis-botol').innerText = botol.jenis;
             document.getElementById('struk-nilai-botol').innerText = formatRupiah(botol.nilai);
             document.getElementById('struk-tanggal').innerText = new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
-
             isScanning = false; 
             window.print();
         }
-        
         window.onafterprint = () => {
             isScanning = true;
-            console.log('Proses cetak selesai, scan dilanjutkan.');
         };
-
-        // Fungsi untuk menampilkan popup botol baru
         function tampilkanModalBotolBaru(barcode) {
             isScanning = false; 
             barcodeBaruSaatIni = barcode;
@@ -218,70 +231,84 @@
             modal.style.display = 'flex';
             botolJenisInput.focus();
         }
-
-        // Fungsi untuk menyimpan botol baru
         function simpanBotolBaru() {
             const jenis = botolJenisInput.value;
             const nilai = parseInt(botolNilaiInput.value, 10);
-
             if (!jenis || !nilai) {
                 alert('Jenis botol dan Nilai Deposit tidak boleh kosong!');
                 return;
             }
-
             const botolBaru = { jenis, nilai };
             botolDatabase[barcodeBaruSaatIni] = botolBaru;
             simpanDatabaseKeLocal();
-
             modal.style.display = 'none';
             botolJenisInput.value = '';
             botolNilaiInput.value = '';
-
             cetakTandaTerima(botolBaru);
         }
-        
         document.getElementById('simpan-botol').addEventListener('click', simpanBotolBaru);
 
-        // Fungsi utama untuk memulai scanner
-        function startScanner() {
-            codeReader.listVideoInputDevices()
-                .then((videoInputDevices) => {
-                    if (videoInputDevices.length === 0) {
-                        alert('Kamera tidak ditemukan!');
-                        return;
-                    }
-                    const selectedDeviceId = videoInputDevices[0].deviceId;
-                    codeReader.decodeFromVideoDevice(selectedDeviceId, 'video', (result, err) => {
-                        if (result && isScanning) {
-                            isScanning = false;
-                            const barcode = result.text;
-                            console.log('Barcode terdeteksi:', barcode);
+        // --- Fungsi INTI untuk SCANNER ---
+        function startScanner(deviceId) {
+            codeReader.reset(); // Hentikan scanner sebelumnya
+            isScanning = true;
+            lastScanInfo.innerHTML = '<p>Arahkan kamera ke barcode botol...</p>';
 
-                            const botol = botolDatabase[barcode];
-                            if (botol) {
-                                lastScanInfo.innerHTML = `<p>${botol.jenis}</p><strong>Nilai: ${formatRupiah(botol.nilai)}</strong>`;
-                                cetakTandaTerima(botol);
-                            } else {
-                                lastScanInfo.innerText = `Botol baru: ${barcode}`;
-                                tampilkanModalBotolBaru(barcode);
-                            }
-                        }
-                        if (err && !(err instanceof ZXing.NotFoundException)) {
-                            console.error(err);
-                        }
-                    });
-                })
-                .catch((err) => {
+            codeReader.decodeFromVideoDevice(deviceId, 'video', (result, err) => {
+                if (result && isScanning) {
+                    isScanning = false;
+                    const barcode = result.text;
+                    const botol = botolDatabase[barcode];
+                    if (botol) {
+                        lastScanInfo.innerHTML = `<p>${botol.jenis}</p><strong>Nilai: ${formatRupiah(botol.nilai)}</strong>`;
+                        cetakTandaTerima(botol);
+                    } else {
+                        lastScanInfo.innerText = `Botol baru: ${barcode}`;
+                        tampilkanModalBotolBaru(barcode);
+                    }
+                }
+                if (err && !(err instanceof ZXing.NotFoundException)) {
                     console.error(err);
-                    alert("Tidak dapat mengakses kamera. Pastikan Anda memberikan izin.");
-                });
+                }
+            }).catch(err => console.error(err));
         }
-        
-        // Inisialisasi Aplikasi
+
+        // --- Inisialisasi Aplikasi ---
         window.addEventListener('load', () => {
             loadDatabaseDariLocal();
-            startScanner();
+
+            navigator.mediaDevices.enumerateDevices()
+                .then(devices => {
+                    videoInputDevices = devices.filter(device => device.kind === 'videoinput');
+                    
+                    if (videoInputDevices.length === 0) {
+                        alert('Kamera tidak ditemukan di perangkat ini.');
+                        return;
+                    }
+
+                    // Tampilkan tombol ganti kamera jika ada lebih dari 1 kamera
+                    if (videoInputDevices.length > 1) {
+                        switchCameraButton.style.display = 'block';
+                    }
+
+                    // Mulai scanner dengan kamera pertama (biasanya kamera belakang di ponsel)
+                    startScanner(videoInputDevices[currentCameraIndex].deviceId);
+                })
+                .catch(err => {
+                    console.error("Error saat enumerasi perangkat:", err);
+                    alert("Tidak dapat mengakses daftar kamera. Pastikan Anda memberikan izin.");
+                });
         });
+
+        // Event listener untuk tombol ganti kamera
+        switchCameraButton.addEventListener('click', () => {
+            // Pindah ke kamera berikutnya dalam daftar
+            currentCameraIndex = (currentCameraIndex + 1) % videoInputDevices.length;
+            const nextDeviceId = videoInputDevices[currentCameraIndex].deviceId;
+            console.log(`Beralih ke kamera: ${videoInputDevices[currentCameraIndex].label}`);
+            startScanner(nextDeviceId);
+        });
+
     </script>
 </body>
 </html>
