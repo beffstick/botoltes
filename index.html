@@ -33,13 +33,13 @@
         }
         .header {
             display: flex;
-            flex-direction: column; /* Mengubah arah menjadi vertikal */
-            align-items: center;    /* Menengahkan item secara horizontal */
-            gap: 10px;              /* Jarak antara logo dan judul */
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
             margin-bottom: 20px;
         }
         #school-logo {
-            height: 50px; /* Sedikit lebih besar */
+            height: 50px;
             width: auto;
         }
         h1 {
@@ -148,22 +148,32 @@
         </div>
     </div>
 
+    <audio id="scan-sound" src="https://actions.google.com/sounds/v1/household/bottle_clink.ogg" preload="auto"></audio>
+
     <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
     <script type="text/javascript">
-        // Semua kode JavaScript di bawah ini sama persis dengan versi sebelumnya
-        // dan tidak perlu diubah.
+        // --- Variabel Global ---
         let botolDatabase = {};
         const codeReader = new ZXing.BrowserMultiFormatReader();
         let isScanning = true;
         let videoInputDevices = [];
         let currentCameraIndex = 0;
+        
+        // --- Elemen DOM ---
         const lastScanInfo = document.getElementById('last-scan-info');
         const modal = document.getElementById('botol-modal');
         const barcodeBaruElem = document.getElementById('barcode-baru');
         const botolJenisInput = document.getElementById('botol-jenis');
         const botolNilaiInput = document.getElementById('botol-nilai');
         const switchCameraButton = document.getElementById('ganti-kamera');
+        const scanSound = document.getElementById('scan-sound'); // Tambahkan ini
         let barcodeBaruSaatIni = null;
+
+        // --- Fungsi Helper ---
+        function playSound() {
+            scanSound.currentTime = 0;
+            scanSound.play();
+        }
 
         function loadDatabaseDariLocal() {
             const db = localStorage.getItem('botolDatabase');
@@ -209,12 +219,17 @@
             const botolBaru = { jenis, nilai };
             botolDatabase[barcodeBaruSaatIni] = botolBaru;
             simpanDatabaseKeLocal();
+            
+            playSound(); // Putar suara saat berhasil menyimpan
+
             modal.style.display = 'none';
             botolJenisInput.value = '';
             botolNilaiInput.value = '';
             cetakTandaTerima(botolBaru);
         }
         document.getElementById('simpan-botol').addEventListener('click', simpanBotolBaru);
+        
+        // --- Fungsi Inti Scanner ---
         function startScanner(deviceId) {
             codeReader.reset();
             isScanning = true;
@@ -225,6 +240,7 @@
                     const barcode = result.text;
                     const botol = botolDatabase[barcode];
                     if (botol) {
+                        playSound(); // Putar suara saat barcode ditemukan
                         lastScanInfo.innerHTML = `<p>${botol.jenis}</p><strong>Nilai: ${formatRupiah(botol.nilai)}</strong>`;
                         cetakTandaTerima(botol);
                     } else {
@@ -235,6 +251,8 @@
                 if (err && !(err instanceof ZXing.NotFoundException)) { console.error(err); }
             }).catch(err => console.error(err));
         }
+
+        // --- Inisialisasi Aplikasi ---
         window.addEventListener('load', () => {
             loadDatabaseDariLocal();
             navigator.mediaDevices.enumerateDevices()
