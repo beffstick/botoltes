@@ -10,9 +10,14 @@
     <style>
         /* CSS untuk mengatur tampilan cetak */
         @media print {
+            /* Sembunyikan semuanya dulu */
             body * { visibility: hidden; }
-            #voucher-container, #voucher-container * { visibility: visible; }
-            #voucher-container {
+
+            /* ATURAN CETAK STRUK (default, jika body TIDAK punya class .printing-recap) */
+            body:not(.printing-recap) #voucher-container,
+            body:not(.printing-recap) #voucher-container * { visibility: visible; }
+            
+            body:not(.printing-recap) #voucher-container {
                 position: absolute;
                 left: 0;
                 top: 0;
@@ -25,24 +30,27 @@
                 color: black;
                 font-family: 'Courier New', Courier, monospace;
             }
-            #voucher-container h3, #voucher-container p, #voucher-container span, #voucher-container div {
+            body:not(.printing-recap) #voucher-container h3, 
+            body:not(.printing-recap) #voucher-container p, 
+            body:not(.printing-recap) #voucher-container span, 
+            body:not(.printing-recap) #voucher-container div {
                 color: black;
                 font-size: 12px; /* Ukuran font struk */
             }
-            #voucher-container h3 {
+            body:not(.printing-recap) #voucher-container h3 {
                 font-size: 14px;
                 font-weight: bold;
                 text-align: center;
                 text-transform: uppercase;
             }
-            #voucher-container #modal-buttons-print {
+            body:not(.printing-recap) #voucher-container #modal-buttons-print {
                 display: none; /* Sembunyikan tombol saat mencetak */
             }
-            #voucher-items-list div {
+            body:not(.printing-recap) #voucher-items-list div {
                 display: flex;
                 justify-content: space-between;
             }
-            #voucher-total {
+            body:not(.printing-recap) #voucher-total {
                 border-top: 1px dashed #000;
                 padding-top: 5px;
                 margin-top: 5px;
@@ -50,6 +58,59 @@
                 display: flex;
                 justify-content: space-between;
             }
+
+            /* ATURAN CETAK REKAP F4 (BARU, jika body PUNYA class .printing-recap) */
+            @page {
+                size: 215mm 330mm; /* Ukuran kertas F4 */
+                margin: 20mm; /* Margin 2cm */
+            }
+
+            body.printing-recap #recap-print-area,
+            body.printing-recap #recap-print-area * {
+                visibility: visible;
+            }
+            body.printing-recap #recap-print-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                color: black;
+                font-family: Arial, sans-serif;
+                background-color: white;
+            }
+            body.printing-recap #recap-print-area h2 {
+                font-size: 16pt;
+                font-weight: bold;
+                text-align: center;
+                margin-bottom: 20px;
+            }
+            body.printing-recap #recap-print-area h3 {
+                font-size: 12pt;
+                margin-bottom: 10px;
+            }
+            body.printing-recap #recap-print-area table {
+                width: 100%;
+                border-collapse: collapse;
+                font-size: 10pt;
+            }
+            body.printing-recap #recap-print-area th,
+            body.printing-recap #recap-print-area td {
+                border: 1px solid #000;
+                padding: 8px;
+                text-align: left;
+            }
+            body.printing-recap #recap-print-area th {
+                background-color: #f2f2f2;
+            }
+            body.printing-recap #recap-print-area .totals {
+                margin-top: 20px;
+                font-size: 12pt;
+                font-weight: bold;
+            }
+            body.printing-recap #recap-print-area .totals p {
+                margin: 5px 0;
+            }
+
         }
 
         /* CSS untuk reader kamera dihapus */
@@ -179,7 +240,16 @@
             <div class="flex-1 overflow-y-auto">
                 <div class="flex justify-between items-center mb-3">
                     <h3 class="text-lg font-semibold">Rekap Harian</h3>
-                    <input type="date" id="recap-date-picker" class="p-2 border rounded text-sm">
+                    <!-- Grup Tombol & Tanggal -->
+                    <div class="flex items-center space-x-2">
+                        <input type="date" id="recap-date-picker" class="p-2 border rounded text-sm">
+                        <!-- Tombol Cetak Rekap BARU -->
+                        <button id="print-recap-button" class="p-2 bg-blue-600 hover:bg-blue-700 text-white rounded" title="Cetak Rekap Harian">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H7a2 2 0 00-2 2v4a2 2 0 002 2h2m8-6a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2h6a2 2 0 002-2v-4zM7 17V5a2 2 0 012-2h6a2 2 0 012 2v12" />
+                            </svg>
+                        </button>
+                    </div>
                 </div>
                 
                 <div class="mb-2 text-sm font-medium text-gray-700">
@@ -198,6 +268,9 @@
             </button>
         </div>
     </div>
+
+    <!-- Area Cetak Rekap Harian (Tersembunyi) BARU -->
+    <div id="recap-print-area" class="hidden"></div>
 
 
     <script>
@@ -250,6 +323,8 @@
             const recapCountElement = document.getElementById('recap-count');
             const recapDatePicker = document.getElementById('recap-date-picker'); // Elemen baru
             const recapTotalPriceElement = document.getElementById('recap-total-price'); // Elemen baru
+            const printRecapButton = document.getElementById('print-recap-button'); // Elemen baru
+            const recapPrintArea = document.getElementById('recap-print-area'); // Elemen baru
 
             // ===================================
             // === FUNGSI DATABASE (LOCALSTORAGE)
@@ -408,6 +483,88 @@
             }
 
             // ===================================
+            // === FUNGSI CETAK REKAP (BARU)
+            // ===================================
+            function handlePrintRecap() {
+                const selectedDate = recapDatePicker.value;
+                if (!selectedDate) {
+                    // Tampilkan notifikasi, jangan alert
+                    statusTextElement.textContent = 'Pilih tanggal terlebih dahulu!';
+                    statusTextElement.classList.add('text-red-500');
+                    setTimeout(() => {
+                         statusTextElement.textContent = 'Letakkan kursor di input di bawah dan mulai pindai.';
+                         statusTextElement.classList.remove('text-red-500');
+                    }, 3000);
+                    return;
+                }
+
+                // 1. Filter data (sama seperti di updateDailyRecapUI)
+                const dailyTransactions = dailyRecapData.filter(tx => 
+                    tx.date.startsWith(selectedDate)
+                );
+
+                if (dailyTransactions.length === 0) {
+                     statusTextElement.textContent = 'Tidak ada data untuk dicetak pada tanggal ini.';
+                    statusTextElement.classList.add('text-red-500');
+                    setTimeout(() => {
+                         statusTextElement.textContent = 'Letakkan kursor di input di bawah dan mulai pindai.';
+                         statusTextElement.classList.remove('text-red-500');
+                    }, 3000);
+                    return;
+                }
+
+                let allBottles = [];
+                let totalDailyPrice = 0;
+                dailyTransactions.forEach(tx => {
+                    allBottles = allBottles.concat(tx.items);
+                    totalDailyPrice += tx.total;
+                });
+
+                // 2. Build HTML String untuk area cetak
+                let html = `
+                    <h2>Rekap Harian Penukaran Botol</h2>
+                    <h3>Tanggal: ${new Date(selectedDate).toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</h3>
+                    
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>No.</th>
+                                <th>Nama Botol</th>
+                                <th>Barcode</th>
+                                <th>Harga</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                `;
+                
+                allBottles.forEach((botol, index) => {
+                    html += `
+                        <tr>
+                            <td>${index + 1}</td>
+                            <td>${botol.name}</td>
+                            <td>${botol.barcode}</td>
+                            <td>${formatter.format(botol.price)}</td>
+                        </tr>
+                    `;
+                });
+
+                html += `
+                        </tbody>
+                    </table>
+                    
+                    <div class="totals">
+                        <p>Total Botol: ${allBottles.length}</p>
+                        <p>Total Pemasukan: ${formatter.format(totalDailyPrice)}</p>
+                    </div>
+                `;
+
+                // 3. Inject HTML, tambahkan kelas, dan panggil print
+                recapPrintArea.innerHTML = html;
+                document.body.classList.add('printing-recap');
+                window.print();
+            }
+
+            // ===================================
             // === FUNGSI LOGIKA SCANNER
             // ===================================
 
@@ -542,11 +699,20 @@
                 updateDailyRecapUI(e.target.value);
             });
 
+            // Listener baru untuk tombol cetak rekap
+            printRecapButton.addEventListener('click', handlePrintRecap);
+
             // Tombol Tutup Rekap/Database
             closeRecapButton.addEventListener('click', hideRecapModal);
 
             // Tombol Simpan Data Botol
             addBottleButton.addEventListener('click', handleAddMasterData);
+
+            // Listener baru untuk membersihkan setelah cetak
+            window.addEventListener('afterprint', () => {
+                document.body.classList.remove('printing-recap');
+                recapPrintArea.innerHTML = ''; // Kosongkan area cetak
+            });
 
             // ===================================
             // === INISIALISASI APLIKASI
