@@ -11,49 +11,69 @@
     <style>
         /* CSS untuk mengatur tampilan cetak */
         @media print {
-            /* Sembunyikan semua elemen di body secara default */
-            body * {
-                visibility: hidden;
-            }
-            /* Tampilkan hanya elemen karcis dan isinya */
-            #voucher, #voucher * {
-                visibility: visible;
-            }
-            /* Atur posisi karcis agar pas di halaman cetak */
-            #voucher {
+            body * { visibility: hidden; }
+            #voucher-container, #voucher-container * { visibility: visible; }
+            #voucher-container {
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 100%;
                 margin: 20px;
                 padding: 20px;
-                border: 2px solid #000;
+                width: 300px; /* Lebar struk thermal standar */
+                border: none;
                 box-shadow: none;
                 background-color: white;
                 color: black;
+                font-family: 'Courier New', Courier, monospace;
             }
-            #voucher h3, #voucher p, #voucher span {
+            #voucher-container h3, #voucher-container p, #voucher-container span, #voucher-container div {
                 color: black;
+                font-size: 12px; /* Ukuran font struk */
+            }
+            #voucher-container h3 {
+                font-size: 14px;
+                font-weight: bold;
+                text-align: center;
+                text-transform: uppercase;
+            }
+            #voucher-container #modal-buttons-print {
+                display: none; /* Sembunyikan tombol saat mencetak */
+            }
+            #voucher-items-list div {
+                display: flex;
+                justify-content: space-between;
+            }
+            #voucher-total {
+                border-top: 1px dashed #000;
+                padding-top: 5px;
+                margin-top: 5px;
+                font-weight: bold;
+                display: flex;
+                justify-content: space-between;
             }
         }
 
-        /* Perbaikan kecil untuk box pemindai */
+        /* Perbaikan untuk box pemindai */
         #reader {
             width: 100%;
+            border: 2px solid #e2e8f0;
             border-radius: 8px;
             overflow: hidden;
-            border: 2px solid #e2e8f0;
+            /* Menggunakan aspect-video (16:9) untuk rasio */
+            aspect-ratio: 16 / 10; 
         }
-        #reader span {
-            color: #64748b;
-        }
+        #reader span { color: #64748b; }
+        
+        /* Mencegah scroll saat modal terbuka */
+        .modal-open { overflow: hidden; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans min-h-screen flex items-center justify-center p-4">
 
-    <div class="bg-white shadow-2xl rounded-lg overflow-hidden w-full max-w-md">
+    <!-- Kontainer Utama -->
+    <div class="bg-white shadow-2xl rounded-lg overflow-hidden w-full max-w-md sm:max-w-xl">
         <!-- Bagian Pemindai -->
-        <div id="reader" class="w-full h-80 bg-gray-200"></div>
+        <div id="reader" class="w-full bg-gray-200"></div>
 
         <!-- Bagian Informasi -->
         <div class="p-6 text-center">
@@ -69,26 +89,45 @@
         </div>
     </div>
 
-    <!-- Popup/Modal Karcis -->
+    <!-- Tombol Buka Rekap (Floating Action Button) -->
+    <button id="recap-button" class="fixed bottom-6 right-6 bg-purple-600 hover:bg-purple-700 text-white rounded-full p-4 shadow-lg z-20" title="Buka Rekap & Database Botol">
+        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2z" />
+            <path stroke-linecap="round" stroke-linejoin="round" d="M17 5V3a2 2 0 00-2-2H9a2 2 0 00-2 2v2" />
+        </svg>
+    </button>
+
+    <!-- ============================== -->
+    <!-- ==== MODAL STRUK PENUKARAN ==== -->
+    <!-- ============================== -->
     <div id="popup-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
-        <div class="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full">
-            <h2 class="text-3xl font-bold text-center text-green-600 mb-6">Penukaran Berhasil!</h2>
-            <p class="text-center text-gray-700 mb-6">Anda telah memindai 5 botol. Silakan cetak karcis di bawah ini untuk ditukarkan.</p>
-
-            <!-- Karcis yang akan dicetak -->
-            <div id="voucher" class="border-2 border-dashed border-gray-400 p-6 bg-gray-50 rounded-md text-center">
-                <h3 class="text-xl font-bold uppercase text-gray-800 mb-2">Karcis Penukaran Botol</h3>
-                <p class="text-lg text-gray-700 mb-4">Telah Menukarkan 5 Botol</p>
-                <div class="text-sm text-gray-600">
-                    <p>Tanggal: <span id="voucher-date"></span></p>
-                    <p>ID Transaksi: <span id="voucher-id"></span></p>
-                </div>
+        <div id="voucher-container" class="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full">
+            <h3 class="text-xl font-bold uppercase text-gray-800 mb-4 text-center">Struk Penukaran Botol</h3>
+            
+            <!-- Info Transaksi -->
+            <div class="text-sm text-gray-600 mb-4 space-y-1">
+                <p><strong>Tanggal:</strong> <span id="voucher-date"></span></p>
+                <p><strong>ID Transaksi:</strong> <span id="voucher-id"></span></p>
             </div>
-            <!-- Akhir Karcis -->
 
-            <div id="modal-buttons" class="mt-8 space-y-3">
+            <!-- Rincian Item Struk -->
+            <div id="voucher-items-list" class="mb-4 space-y-2">
+                <!-- Item akan dimasukkan oleh JS di sini -->
+                <!-- Contoh: <div><span>Nama Botol</span><span>Rp1.000</span></div> -->
+            </div>
+            
+            <!-- Total Struk -->
+            <div id="voucher-total" class="text-lg font-bold pt-2 border-t border-dashed border-gray-400">
+                <span>TOTAL</span>
+                <span id="voucher-total-price">Rp0</span>
+            </div>
+
+            <p class="text-center text-sm text-gray-700 mt-6">Struk ini bisa ditukarkan menjadi uang</p>
+
+            <!-- Tombol Aksi (Hanya untuk layar, hilang saat print) -->
+            <div id="modal-buttons-print" class="mt-8 space-y-3">
                 <button id="print-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-300">
-                    Cetak Karcis
+                    Cetak Struk
                 </button>
                 <button id="close-button" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-4 rounded-lg text-lg transition duration-300">
                     Tutup & Pindai Lagi
@@ -97,117 +136,338 @@
         </div>
     </div>
 
+    <!-- ============================== -->
+    <!-- ==== MODAL REKAP & DATABASE ==== -->
+    <!-- ============================== -->
+    <div id="recap-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-40 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-xl w-full max-h-[90vh] flex flex-col">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Database Botol & Rekap Sesi</h2>
+            
+            <!-- Form Tambah/Edit Master Data -->
+            <div class="bg-gray-50 p-4 rounded-lg mb-6">
+                <h3 class="text-lg font-semibold mb-3">Tambah Data Botol Baru</h3>
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-3">
+                    <input id="barcode-input" type="text" placeholder="Nomor Barcode" class="md:col-span-2 p-2 border rounded">
+                    <input id="name-input" type="text" placeholder="Nama Botol" class="p-2 border rounded">
+                    <input id="price-input" type="number" placeholder="Harga" class="p-2 border rounded">
+                </div>
+                <button id="add-bottle-button" class="mt-3 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition duration-300">
+                    Simpan ke Database
+                </button>
+            </div>
+
+            <!-- Daftar Botol (Master Data) -->
+            <div class="flex-1 overflow-y-auto mb-6">
+                <h3 class="text-lg font-semibold mb-3">Isi Database Botol (Disimpan di HP Anda)</h3>
+                <div id="master-data-list" class="space-y-2 max-h-40 overflow-y-auto border p-3 rounded">
+                    <!-- Master data list populated by JS -->
+                    <p class="text-gray-500">Database kosong. Silakan tambahkan data.</p>
+                </div>
+            </div>
+
+            <!-- Rekap Sesi Ini -->
+            <div class="flex-1 overflow-y-auto">
+                <h3 class="text-lg font-semibold mb-3">Rekap Sesi Ini (Total: <span id="recap-count">0</span>)</h3>
+                <div id="recap-list" class="space-y-2 max-h-40 overflow-y-auto border p-3 rounded">
+                    <!-- Scanned items list populated by JS -->
+                    <p class="text-gray-500">Belum ada botol yang dipindai.</p>
+                </div>
+            </div>
+
+            <button id="close-recap-button" class="mt-6 w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-4 rounded-lg text-lg transition duration-300">
+                Tutup
+            </button>
+        </div>
+    </div>
+
+
     <script>
         document.addEventListener('DOMContentLoaded', (event) => {
-            // Variabel global
+            // ===================================
+            // === VARIABEL GLOBAL & STATE APLIKASI
+            // ===================================
             let scannedCount = 0;
             const targetCount = 5;
             let html5QrcodeScanner;
+            
+            // State baru untuk database dan rekap
+            let bottleMasterData = new Map(); // Map(barcode, {name, price})
+            let scannedBottles = []; // Array dari {barcode, name, price}
 
-            // Referensi Elemen DOM
+            // Fungsi format Rupiah
+            const formatter = new Intl.NumberFormat('id-ID', {
+                style: 'currency',
+                currency: 'IDR',
+                minimumFractionDigits: 0
+            });
+
+            // ===================================
+            // === REFERENSI ELEMEN DOM
+            // ===================================
             const counterElement = document.getElementById('counter');
             const statusTextElement = document.getElementById('status-text');
+
+            // DOM Modal Struk
             const modalElement = document.getElementById('popup-modal');
             const printButton = document.getElementById('print-button');
             const closeButton = document.getElementById('close-button');
             const voucherDateElement = document.getElementById('voucher-date');
             const voucherIdElement = document.getElementById('voucher-id');
+            const voucherItemsListElement = document.getElementById('voucher-items-list');
+            const voucherTotalPriceElement = document.getElementById('voucher-total-price');
 
-            // Fungsi yang dipanggil saat barcode berhasil dipindai
-            function onScanSuccess(decodedText, decodedResult) {
-                // Jangan proses jika modal sedang terbuka
-                if (!modalElement.classList.contains('hidden')) {
+            // DOM Modal Rekap
+            const recapButton = document.getElementById('recap-button');
+            const recapModalElement = document.getElementById('recap-modal');
+            const closeRecapButton = document.getElementById('close-recap-button');
+            const addBottleButton = document.getElementById('add-bottle-button');
+            const barcodeInputElement = document.getElementById('barcode-input');
+            const nameInputElement = document.getElementById('name-input');
+            const priceInputElement = document.getElementById('price-input');
+            const masterDataListElement = document.getElementById('master-data-list');
+            const recapListElement = document.getElementById('recap-list');
+            const recapCountElement = document.getElementById('recap-count');
+
+            // ===================================
+            // === FUNGSI DATABASE (LOCALSTORAGE)
+            // ===================================
+            function saveMasterData() {
+                // Convert Map ke Array untuk JSON.stringify
+                const dataArray = Array.from(bottleMasterData.entries());
+                localStorage.setItem('bottleMasterData', JSON.stringify(dataArray));
+                console.log('Database disimpan:', dataArray);
+                updateMasterDataListUI();
+            }
+
+            function loadMasterData() {
+                const dataString = localStorage.getItem('bottleMasterData');
+                if (dataString) {
+                    try {
+                        const dataArray = JSON.parse(dataString);
+                        bottleMasterData = new Map(dataArray);
+                        console.log('Database dimuat:', bottleMasterData);
+                    } catch (e) {
+                        console.error('Gagal memuat database:', e);
+                        bottleMasterData = new Map();
+                    }
+                }
+                updateMasterDataListUI();
+            }
+            
+            function handleAddMasterData() {
+                const barcode = barcodeInputElement.value.trim();
+                const name = nameInputElement.value.trim();
+                const price = parseInt(priceInputElement.value) || 0;
+
+                if (!barcode || !name) {
+                    alert('Nomor Barcode dan Nama Botol tidak boleh kosong!');
                     return;
                 }
 
-                console.log(`Scan berhasil: ${decodedText}`, decodedResult);
-                
-                // Tambah hitungan
-                scannedCount++;
-                
-                // Perbarui UI
-                counterElement.textContent = `${scannedCount} / ${targetCount}`;
-                statusTextElement.textContent = `Barcode Terakhir: ${decodedText}`;
+                bottleMasterData.set(barcode, { name, price });
+                saveMasterData();
 
-                // Beri getaran jika didukung (feedback di HP)
-                if (window.navigator.vibrate) {
-                    window.navigator.vibrate(100);
+                // Kosongkan form
+                barcodeInputElement.value = '';
+                nameInputElement.value = '';
+                priceInputElement.value = '';
+            }
+
+            // ===================================
+            // === FUNGSI UPDATE UI (NON-SCANNER)
+            // ===================================
+            
+            function updateMasterDataListUI() {
+                masterDataListElement.innerHTML = ''; // Kosongkan
+                if (bottleMasterData.size === 0) {
+                    masterDataListElement.innerHTML = '<p class="text-gray-500">Database kosong. Silakan tambahkan data.</p>';
+                    return;
+                }
+                
+                bottleMasterData.forEach((data, barcode) => {
+                    const item = document.createElement('div');
+                    item.className = 'p-2 bg-white border rounded text-sm flex justify-between';
+                    item.innerHTML = `
+                        <span>
+                            <strong class="text-purple-700">${data.name}</strong> (${barcode})
+                        </span>
+                        <span class="font-semibold">${formatter.format(data.price)}</span>
+                    `;
+                    masterDataListElement.appendChild(item);
+                });
+            }
+
+            function updateRecapListUI() {
+                recapListElement.innerHTML = ''; // Kosongkan
+                recapCountElement.textContent = scannedBottles.length;
+
+                if (scannedBottles.length === 0) {
+                    recapListElement.innerHTML = '<p class="text-gray-500">Belum ada botol yang dipindai.</p>';
+                    return;
+                }
+                
+                scannedBottles.forEach((botol, index) => {
+                    const item = document.createElement('div');
+                    item.className = 'p-2 bg-white border rounded text-sm flex justify-between';
+                    item.innerHTML = `
+                        <span>
+                            <strong>${botol.name}</strong>
+                            ${botol.price > 0 ? '' : `(${botol.barcode})`}
+                        </span>
+                        <span class="font-semibold">${formatter.format(botol.price)}</span>
+                    `;
+                    recapListElement.appendChild(item);
+                });
+            }
+
+            function showRecapModal() {
+                updateMasterDataListUI();
+                updateRecapListUI();
+                recapModalElement.classList.remove('hidden');
+                document.body.classList.add('modal-open');
+            }
+
+            function hideRecapModal() {
+                recapModalElement.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+            }
+
+            // ===================================
+            // === FUNGSI LOGIKA SCANNER
+            // ===================================
+
+            function onScanSuccess(decodedText, decodedResult) {
+                if (!modalElement.classList.contains('hidden') || !recapModalElement.classList.contains('hidden')) {
+                    return; // Jangan proses jika modal terbuka
                 }
 
-                // Cek jika sudah mencapai target
+                console.log(`Scan berhasil: ${decodedText}`);
+                
+                // 1. Cari info botol di database
+                const bottleInfo = bottleMasterData.get(decodedText) || { name: 'Botol Tidak Dikenal', price: 0 };
+                
+                // 2. Tambahkan ke daftar pindaian sesi ini
+                const scannedBottle = {
+                    barcode: decodedText,
+                    name: bottleInfo.name,
+                    price: bottleInfo.price
+                };
+                scannedBottles.push(scannedBottle);
+                
+                // 3. Tambah hitungan
+                scannedCount++;
+                
+                // 4. Perbarui UI
+                counterElement.textContent = `${scannedCount} / ${targetCount}`;
+                statusTextElement.textContent = `Botol: ${scannedBottle.name} (${formatter.format(scannedBottle.price)})`;
+
+                if (window.navigator.vibrate) window.navigator.vibrate(100);
+
+                // 5. Cek jika sudah mencapai target
                 if (scannedCount >= targetCount) {
-                    // Hentikan pemindai
                     if (html5QrcodeScanner) {
-                        html5QrcodeScanner.clear().catch(error => {
-                            console.error("Gagal menghentikan pemindai.", error);
-                        });
+                        html5QrcodeScanner.clear().catch(error => console.error("Gagal stop pemindai.", error));
                     }
-                    // Tampilkan popup
                     showVoucherPopup();
                 }
             }
 
-            // Fungsi yang dipanggil jika pemindaian gagal (opsional)
             function onScanError(errorMessage) {
-                // Kita bisa abaikan error "tidak ditemukan"
-                // console.warn(`Scan error: ${errorMessage}`);
+                // Abaikan
             }
 
-            // Fungsi untuk menampilkan popup karcis
             function showVoucherPopup() {
-                // Isi data karcis
+                // Isi data struk
                 const now = new Date();
                 voucherDateElement.textContent = now.toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
                 voucherIdElement.textContent = `TX-${Date.now()}`;
                 
+                // Kosongkan daftar item & hitung total
+                voucherItemsListElement.innerHTML = '';
+                let totalPrice = 0;
+
+                scannedBottles.forEach(botol => {
+                    const item = document.createElement('div');
+                    item.className = 'flex justify-between text-sm';
+                    item.innerHTML = `
+                        <span>${botol.name}</span>
+                        <span>${formatter.format(botol.price)}</span>
+                    `;
+                    voucherItemsListElement.appendChild(item);
+                    totalPrice += botol.price;
+                });
+                
+                // Tampilkan total
+                voucherTotalPriceElement.textContent = formatter.format(totalPrice);
+                
                 // Tampilkan modal
                 modalElement.classList.remove('hidden');
+                document.body.classList.add('modal-open');
             }
 
-            // Fungsi untuk memulai pemindai
             function startScanner() {
-                // Inisialisasi pemindai
-                html5QrcodeScanner = new Html5QrcodeScanner(
-                    "reader", // ID elemen untuk menaruh pemindai
-                    { 
-                        fps: 10, // Frames per second
-                        qrbox: { width: 250, height: 250 }, // Ukuran kotak pemindai
-                        rememberLastUsedCamera: true, // Ingat kamera terakhir
-                        supportedScanTypes: [ // Hanya scan barcode
-                            Html5QrcodeScanType.SCAN_TYPE_CAMERA
-                        ]
+                // Konfigurasi baru untuk scanner
+                const config = {
+                    fps: 10,
+                    // qrbox dibuat responsif, 70% dari lebar/tinggi terkecil
+                    qrbox: (viewfinderWidth, viewfinderHeight) => {
+                        let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+                        let qrboxSize = Math.floor(minEdge * 0.7);
+                        return { width: qrboxSize, height: qrboxSize };
                     },
-                    false // false = tidak verbose
-                );
-                
-                // Render pemindai
+                    rememberLastUsedCamera: true,
+                    supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
+                };
+
+                html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
                 html5QrcodeScanner.render(onScanSuccess, onScanError);
                 statusTextElement.textContent = "Mohon izinkan akses kamera...";
             }
+            
+            function resetScanner() {
+                // Sembunyikan modal
+                modalElement.classList.add('hidden');
+                document.body.classList.remove('modal-open');
+                
+                // Reset data sesi
+                scannedCount = 0;
+                scannedBottles = [];
+                
+                // Perbarui UI
+                counterElement.textContent = `${scannedCount} / ${targetCount}`;
+                statusTextElement.textContent = "Arahkan kamera ke barcode botol...";
+                updateRecapListUI();
+                
+                // Mulai lagi pemindai
+                startScanner();
+            }
 
-            // --- Event Listeners ---
+            // ===================================
+            // === EVENT LISTENERS
+            // ===================================
 
-            // Tombol Cetak
+            // Tombol Cetak Struk
             printButton.addEventListener('click', () => {
                 window.print();
             });
 
-            // Tombol Tutup
-            closeButton.addEventListener('click', () => {
-                // Sembunyikan modal
-                modalElement.classList.add('hidden');
-                
-                // Reset hitungan
-                scannedCount = 0;
-                counterElement.textContent = `${scannedCount} / ${targetCount}`;
-                statusTextElement.textContent = "Arahkan kamera ke barcode botol...";
-                
-                // Mulai lagi pemindai
-                startScanner();
-            });
+            // Tombol Tutup Struk & Pindai Lagi
+            closeButton.addEventListener('click', resetScanner);
 
-            // --- Mulai Aplikasi ---
-            startScanner();
+            // Tombol Buka Rekap/Database
+            recapButton.addEventListener('click', showRecapModal);
+
+            // Tombol Tutup Rekap/Database
+            closeRecapButton.addEventListener('click', hideRecapModal);
+
+            // Tombol Simpan Data Botol
+            addBottleButton.addEventListener('click', handleAddMasterData);
+
+            // ===================================
+            // === INISIALISASI APLIKASI
+            // ===================================
+            loadMasterData(); // Muat database dari localStorage
+            startScanner(); // Mulai pemindai
         });
     </script>
 </body>
