@@ -2,280 +2,212 @@
 <html lang="id">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>Poin Daur Ulang Sekolah</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Scan Barcode Botol</title>
+    <!-- Memuat Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Memuat Pustaka HTML5-QRCode -->
+    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
     <style>
-        :root {
-            --theme-green: #28a745;
-            --theme-dark-green: #218838;
-            --theme-blue: #007bff;
-            --bg-color: #f4f6f3;
-            --font-color: #333;
-            --card-bg: white;
-            --border-color: #e0e0e0;
+        /* CSS untuk mengatur tampilan cetak */
+        @media print {
+            /* Sembunyikan semua elemen di body secara default */
+            body * {
+                visibility: hidden;
+            }
+            /* Tampilkan hanya elemen karcis dan isinya */
+            #voucher, #voucher * {
+                visibility: visible;
+            }
+            /* Atur posisi karcis agar pas di halaman cetak */
+            #voucher {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+                margin: 20px;
+                padding: 20px;
+                border: 2px solid #000;
+                box-shadow: none;
+                background-color: white;
+                color: black;
+            }
+            #voucher h3, #voucher p, #voucher span {
+                color: black;
+            }
         }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
-            background-color: var(--bg-color);
-            margin: 0;
-            padding: 15px;
-            color: var(--font-color);
-        }
-        .container {
-            background: var(--card-bg);
-            padding: 20px;
-            border-radius: 12px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.08);
+
+        /* Perbaikan kecil untuk box pemindai */
+        #reader {
             width: 100%;
-            max-width: 450px;
-            margin: 0 auto;
-            box-sizing: border-box;
-        }
-        .header {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 10px;
-            margin-bottom: 20px;
-        }
-        #school-logo {
-            height: 50px;
-            width: auto;
-        }
-        h1 {
-            color: var(--theme-dark-green);
-            margin: 0;
-            font-size: 1.5em;
-            text-align: center;
-        }
-        #video-container {
-            position: relative;
-            width: 100%;
-            border: 2px solid var(--border-color);
             border-radius: 8px;
             overflow: hidden;
-            background: #000;
+            border: 2px solid #e2e8f0;
         }
-        video { width: 100%; height: auto; display: block; }
-        
-        #ganti-kamera {
-            display: none;
-            width: 100%;
-            padding: 10px;
-            margin-top: 15px;
-            font-size: 1em;
-            font-weight: bold;
-            color: white;
-            background-color: var(--theme-blue);
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
-        #last-scan-info {
-            text-align: center;
-            margin-top: 15px;
-            padding: 10px;
-            background: #e9f5ec;
-            border-radius: 6px;
-            min-height: 50px;
-            border: 1px solid #c8e6c9;
-        }
-        
-        /* Modal dan Print CSS tidak berubah */
-        .modal { display: none; position: fixed; z-index: 1000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); justify-content: center; align-items: center; }
-        .modal-content { background: var(--card-bg); padding: 25px; border-radius: 10px; width: 90%; max-width: 400px; box-shadow: 0 5px 20px rgba(0,0,0,0.2); }
-        .modal-content h2 { margin-top: 0; color: var(--theme-dark-green); }
-        .modal-content input { width: 100%; padding: 10px; margin-bottom: 15px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box; }
-        .modal-content button { width: 100%; padding: 12px; font-size: 1em; font-weight: bold; color: white; background-color: var(--theme-green); border: none; border-radius: 6px; cursor: pointer; transition: background-color 0.2s; }
-        .modal-content button:hover { background-color: var(--theme-dark-green); }
-        .struk-print { display: none; }
-
-        @media print {
-            body { padding: 0; margin: 0; background-color: white; }
-            .container, .modal { display: none; }
-            .struk-print { display: block; font-family: 'Courier New', Courier, monospace; width: 100%; font-size: 10pt; }
-            .struk-header, .struk-footer { text-align: center; margin-bottom: 10px; }
-            .struk-item { padding: 5px 0; border-top: 1px dashed black; }
-            .struk-item .jenis { font-size: 11pt; }
-            .struk-item .nilai { font-size: 12pt; font-weight: bold; text-align: right; }
-            .struk-footer { border-top: 1px dashed black; padding-top: 5px; margin-top: 10px; }
+        #reader span {
+            color: #64748b;
         }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 font-sans min-h-screen flex items-center justify-center p-4">
 
-    <div class="container">
-        <div class="header">
-            <img id="school-logo" src="logo.png" alt="Logo Sekolah">
-            <h1>♻️ Poin Daur Ulang</h1>
-        </div>
+    <div class="bg-white shadow-2xl rounded-lg overflow-hidden w-full max-w-md">
+        <!-- Bagian Pemindai -->
+        <div id="reader" class="w-full h-80 bg-gray-200"></div>
 
-        <div id="video-container">
-            <video id="video" playsinline></video>
-        </div>
-
-        <button id="ganti-kamera">🔄 Ganti Kamera</button>
-
-        <div id="last-scan-info">
-            <p>Mendeteksi kamera...</p>
-        </div>
-    </div>
-
-    <div id="botol-modal" class="modal">
-        <div class="modal-content">
-            <h2>🍾 Tambah Jenis Botol Baru</h2>
-            <p>Barcode <strong id="barcode-baru"></strong> tidak terdaftar.</p>
-            <input type="text" id="botol-jenis" placeholder="Contoh: Botol PET 600ml" required>
-            <input type="number" id="botol-nilai" placeholder="Nilai Deposit (mis: 500)" required>
-            <button id="simpan-botol">Simpan & Cetak Tanda Terima</button>
-        </div>
-    </div>
-
-    <div class="struk-print" id="struk-area">
-        <div class="struk-header">
-            <h3>Poin Daur Ulang Sekolah</h3>
-            <p>Tanda Terima Deposit</p>
-            <p id="struk-tanggal"></p>
-            <p>--------------------------------</p>
-        </div>
-        <div class="struk-item">
-            <div id="struk-jenis-botol" class="jenis"></div>
-            <div id="struk-nilai-botol" class="nilai"></div>
-        </div>
-        <div class="struk-footer">
-            <p>Terima Kasih Telah Mendaur Ulang!</p>
-        </div>
-    </div>
-
-    <audio id="scan-sound" src="https://actions.google.com/sounds/v1/household/bottle_clink.ogg" preload="auto"></audio>
-
-    <script type="text/javascript" src="https://unpkg.com/@zxing/library@latest"></script>
-    <script type="text/javascript">
-        // --- Variabel Global ---
-        let botolDatabase = {};
-        const codeReader = new ZXing.BrowserMultiFormatReader();
-        let isScanning = true;
-        let videoInputDevices = [];
-        let currentCameraIndex = 0;
-        
-        // --- Elemen DOM ---
-        const lastScanInfo = document.getElementById('last-scan-info');
-        const modal = document.getElementById('botol-modal');
-        const barcodeBaruElem = document.getElementById('barcode-baru');
-        const botolJenisInput = document.getElementById('botol-jenis');
-        const botolNilaiInput = document.getElementById('botol-nilai');
-        const switchCameraButton = document.getElementById('ganti-kamera');
-        const scanSound = document.getElementById('scan-sound'); // Tambahkan ini
-        let barcodeBaruSaatIni = null;
-
-        // --- Fungsi Helper ---
-        function playSound() {
-            scanSound.currentTime = 0;
-            scanSound.play();
-        }
-
-        function loadDatabaseDariLocal() {
-            const db = localStorage.getItem('botolDatabase');
-            if (db) {
-                botolDatabase = JSON.parse(db);
-            } else {
-                botolDatabase = {
-                    '8999909012345': { jenis: 'Botol Soda 1.5L', nilai: 2500 },
-                    '8992752201017': { jenis: 'Botol Teh Kotak', nilai: 500 },
-                    '8886008101072': { jenis: 'Botol Susu UHT 250ml', nilai: 700 }
-                };
-                simpanDatabaseKeLocal();
-            }
-        }
-        function simpanDatabaseKeLocal() {
-            localStorage.setItem('botolDatabase', JSON.stringify(botolDatabase));
-        }
-        function formatRupiah(angka) {
-            return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', minimumFractionDigits: 0 }).format(angka);
-        }
-        function cetakTandaTerima(botol) {
-            document.getElementById('struk-jenis-botol').innerText = botol.jenis;
-            document.getElementById('struk-nilai-botol').innerText = formatRupiah(botol.nilai);
-            document.getElementById('struk-tanggal').innerText = new Date().toLocaleString('id-ID', { dateStyle: 'short', timeStyle: 'short' });
-            isScanning = false; 
-            window.print();
-        }
-        window.onafterprint = () => { isScanning = true; };
-        function tampilkanModalBotolBaru(barcode) {
-            isScanning = false; 
-            barcodeBaruSaatIni = barcode;
-            barcodeBaruElem.innerText = barcode;
-            modal.style.display = 'flex';
-            botolJenisInput.focus();
-        }
-        function simpanBotolBaru() {
-            const jenis = botolJenisInput.value;
-            const nilai = parseInt(botolNilaiInput.value, 10);
-            if (!jenis || !nilai) {
-                alert('Jenis botol dan Nilai Deposit tidak boleh kosong!');
-                return;
-            }
-            const botolBaru = { jenis, nilai };
-            botolDatabase[barcodeBaruSaatIni] = botolBaru;
-            simpanDatabaseKeLocal();
+        <!-- Bagian Informasi -->
+        <div class="p-6 text-center">
+            <h1 class="text-2xl font-bold text-gray-800 mb-2">Scan Barcode Botol</h1>
+            <p id="status-text" class="text-gray-500 mb-4">Arahkan kamera ke barcode botol...</p>
             
-            playSound(); // Putar suara saat berhasil menyimpan
+            <div class="my-6">
+                <span class="text-lg text-gray-600">Jumlah Botol</span>
+                <div id="counter" class="text-6xl font-extrabold text-blue-600">
+                    0 / 5
+                </div>
+            </div>
+        </div>
+    </div>
 
-            modal.style.display = 'none';
-            botolJenisInput.value = '';
-            botolNilaiInput.value = '';
-            cetakTandaTerima(botolBaru);
-        }
-        document.getElementById('simpan-botol').addEventListener('click', simpanBotolBaru);
-        
-        // --- Fungsi Inti Scanner ---
-        function startScanner(deviceId) {
-            codeReader.reset();
-            isScanning = true;
-            lastScanInfo.innerHTML = '<p>Arahkan kamera ke barcode botol...</p>';
-            codeReader.decodeFromVideoDevice(deviceId, 'video', (result, err) => {
-                if (result && isScanning) {
-                    isScanning = false;
-                    const barcode = result.text;
-                    const botol = botolDatabase[barcode];
-                    if (botol) {
-                        playSound(); // Putar suara saat barcode ditemukan
-                        lastScanInfo.innerHTML = `<p>${botol.jenis}</p><strong>Nilai: ${formatRupiah(botol.nilai)}</strong>`;
-                        cetakTandaTerima(botol);
-                    } else {
-                        lastScanInfo.innerText = `Botol baru: ${barcode}`;
-                        tampilkanModalBotolBaru(barcode);
-                    }
+    <!-- Popup/Modal Karcis -->
+    <div id="popup-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-xl p-8 max-w-lg w-full">
+            <h2 class="text-3xl font-bold text-center text-green-600 mb-6">Penukaran Berhasil!</h2>
+            <p class="text-center text-gray-700 mb-6">Anda telah memindai 5 botol. Silakan cetak karcis di bawah ini untuk ditukarkan.</p>
+
+            <!-- Karcis yang akan dicetak -->
+            <div id="voucher" class="border-2 border-dashed border-gray-400 p-6 bg-gray-50 rounded-md text-center">
+                <h3 class="text-xl font-bold uppercase text-gray-800 mb-2">Karcis Penukaran Botol</h3>
+                <p class="text-lg text-gray-700 mb-4">Telah Menukarkan 5 Botol</p>
+                <div class="text-sm text-gray-600">
+                    <p>Tanggal: <span id="voucher-date"></span></p>
+                    <p>ID Transaksi: <span id="voucher-id"></span></p>
+                </div>
+            </div>
+            <!-- Akhir Karcis -->
+
+            <div id="modal-buttons" class="mt-8 space-y-3">
+                <button id="print-button" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg text-lg transition duration-300">
+                    Cetak Karcis
+                </button>
+                <button id="close-button" class="w-full bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-3 px-4 rounded-lg text-lg transition duration-300">
+                    Tutup & Pindai Lagi
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', (event) => {
+            // Variabel global
+            let scannedCount = 0;
+            const targetCount = 5;
+            let html5QrcodeScanner;
+
+            // Referensi Elemen DOM
+            const counterElement = document.getElementById('counter');
+            const statusTextElement = document.getElementById('status-text');
+            const modalElement = document.getElementById('popup-modal');
+            const printButton = document.getElementById('print-button');
+            const closeButton = document.getElementById('close-button');
+            const voucherDateElement = document.getElementById('voucher-date');
+            const voucherIdElement = document.getElementById('voucher-id');
+
+            // Fungsi yang dipanggil saat barcode berhasil dipindai
+            function onScanSuccess(decodedText, decodedResult) {
+                // Jangan proses jika modal sedang terbuka
+                if (!modalElement.classList.contains('hidden')) {
+                    return;
                 }
-                if (err && !(err instanceof ZXing.NotFoundException)) { console.error(err); }
-            }).catch(err => console.error(err));
-        }
 
-        // --- Inisialisasi Aplikasi ---
-        window.addEventListener('load', () => {
-            loadDatabaseDariLocal();
-            navigator.mediaDevices.enumerateDevices()
-                .then(devices => {
-                    videoInputDevices = devices.filter(device => device.kind === 'videoinput');
-                    if (videoInputDevices.length === 0) {
-                        alert('Kamera tidak ditemukan di perangkat ini.');
-                        return;
+                console.log(`Scan berhasil: ${decodedText}`, decodedResult);
+                
+                // Tambah hitungan
+                scannedCount++;
+                
+                // Perbarui UI
+                counterElement.textContent = `${scannedCount} / ${targetCount}`;
+                statusTextElement.textContent = `Barcode Terakhir: ${decodedText}`;
+
+                // Beri getaran jika didukung (feedback di HP)
+                if (window.navigator.vibrate) {
+                    window.navigator.vibrate(100);
+                }
+
+                // Cek jika sudah mencapai target
+                if (scannedCount >= targetCount) {
+                    // Hentikan pemindai
+                    if (html5QrcodeScanner) {
+                        html5QrcodeScanner.clear().catch(error => {
+                            console.error("Gagal menghentikan pemindai.", error);
+                        });
                     }
-                    if (videoInputDevices.length > 1) {
-                        switchCameraButton.style.display = 'block';
-                    }
-                    startScanner(videoInputDevices[currentCameraIndex].deviceId);
-                })
-                .catch(err => {
-                    console.error("Error saat enumerasi perangkat:", err);
-                    alert("Tidak dapat mengakses daftar kamera. Pastikan Anda memberikan izin.");
-                });
-        });
-        switchCameraButton.addEventListener('click', () => {
-            currentCameraIndex = (currentCameraIndex + 1) % videoInputDevices.length;
-            const nextDeviceId = videoInputDevices[currentCameraIndex].deviceId;
-            startScanner(nextDeviceId);
+                    // Tampilkan popup
+                    showVoucherPopup();
+                }
+            }
+
+            // Fungsi yang dipanggil jika pemindaian gagal (opsional)
+            function onScanError(errorMessage) {
+                // Kita bisa abaikan error "tidak ditemukan"
+                // console.warn(`Scan error: ${errorMessage}`);
+            }
+
+            // Fungsi untuk menampilkan popup karcis
+            function showVoucherPopup() {
+                // Isi data karcis
+                const now = new Date();
+                voucherDateElement.textContent = now.toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
+                voucherIdElement.textContent = `TX-${Date.now()}`;
+                
+                // Tampilkan modal
+                modalElement.classList.remove('hidden');
+            }
+
+            // Fungsi untuk memulai pemindai
+            function startScanner() {
+                // Inisialisasi pemindai
+                html5QrcodeScanner = new Html5QrcodeScanner(
+                    "reader", // ID elemen untuk menaruh pemindai
+                    { 
+                        fps: 10, // Frames per second
+                        qrbox: { width: 250, height: 250 }, // Ukuran kotak pemindai
+                        rememberLastUsedCamera: true, // Ingat kamera terakhir
+                        supportedScanTypes: [ // Hanya scan barcode
+                            Html5QrcodeScanType.SCAN_TYPE_CAMERA
+                        ]
+                    },
+                    false // false = tidak verbose
+                );
+                
+                // Render pemindai
+                html5QrcodeScanner.render(onScanSuccess, onScanError);
+                statusTextElement.textContent = "Mohon izinkan akses kamera...";
+            }
+
+            // --- Event Listeners ---
+
+            // Tombol Cetak
+            printButton.addEventListener('click', () => {
+                window.print();
+            });
+
+            // Tombol Tutup
+            closeButton.addEventListener('click', () => {
+                // Sembunyikan modal
+                modalElement.classList.add('hidden');
+                
+                // Reset hitungan
+                scannedCount = 0;
+                counterElement.textContent = `${scannedCount} / ${targetCount}`;
+                statusTextElement.textContent = "Arahkan kamera ke barcode botol...";
+                
+                // Mulai lagi pemindai
+                startScanner();
+            });
+
+            // --- Mulai Aplikasi ---
+            startScanner();
         });
     </script>
 </body>
