@@ -299,6 +299,7 @@
             // ===================================
             let scannedCount = 0;
             const targetCount = 5;
+            let isScanning = false; // <-- BARU: Tambahkan flag delay
             
             // State baru untuk database dan rekap
             let bottleMasterData = new Map(); // Map(barcode, {name, price})
@@ -621,10 +622,18 @@
             // ===================================
 
             function processScan(decodedText) {
+                // MODIFIKASI: Cek flag delay
+                if (isScanning) {
+                    return; // Keluar jika sedang dalam masa tunggu
+                }
+
                 // MODIFIKASI: Cek kedua modal
                 if (!modalElement.classList.contains('hidden') || !recapModalElement.classList.contains('hidden') || !dbModalElement.classList.contains('hidden')) {
                     return; // Jangan proses jika modal terbuka
                 }
+
+                // MODIFIKASI: Atur flag delay
+                isScanning = true;
 
                 console.log(`Scan diproses: ${decodedText}`);
                 
@@ -652,6 +661,20 @@
                 if (scannedCount >= targetCount) {
                     showVoucherPopup();
                 }
+
+                // MODIFIKASI: Tambahkan delay 1 detik sebelum scan berikutnya
+                setTimeout(() => {
+                    isScanning = false; // Buka kunci flag
+                    scanInputElement.value = ''; // Kosongkan input
+                    
+                    // Fokus kembali ke input HANYA jika tidak ada modal yang terbuka
+                    if (modalElement.classList.contains('hidden') && 
+                        recapModalElement.classList.contains('hidden') && 
+                        dbModalElement.classList.contains('hidden')) 
+                    {
+                        scanInputElement.focus();
+                    }
+                }, 1000); // 1000 ms = 1 detik delay
             }
 
 
@@ -708,7 +731,7 @@
                     if (barcode) {
                         processScan(barcode);
                     }
-                    scanInputElement.value = '';
+                    // Dihapus: Pembersihan input dipindah ke processScan
                 }
             });
 
