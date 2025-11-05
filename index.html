@@ -21,8 +21,8 @@
                 position: absolute;
                 left: 0;
                 top: 0;
-                margin: 20px;
-                padding: 20px;
+                margin: 0; /* Hapus margin untuk print struk */
+                padding: 5px; /* Kurangi padding */
                 width: 300px; /* Lebar struk thermal standar */
                 border: none;
                 box-shadow: none;
@@ -60,11 +60,10 @@
             }
 
             /* ATURAN CETAK REKAP F4 (BARU, jika body PUNYA class .printing-recap) */
-            @page {
-                size: 215mm 330mm; /* Ukuran kertas F4 */
-                margin: 20mm; /* Margin 2cm */
-            }
-
+            
+            /* !! Perbaikan: @page dihapus dari sini untuk mencegah konflik !! */
+            /* Ukuran F4 akan ditambahkan secara dinamis via JavaScript */
+            
             body.printing-recap #recap-print-area,
             body.printing-recap #recap-print-area * {
                 visibility: visible;
@@ -482,7 +481,7 @@
                 scanInputElement.focus(); // Fokus kembali ke input scan
             }
 
-            // ===================================
+            /* =================================== */
             // === FUNGSI CETAK REKAP (BARU)
             // ===================================
             function handlePrintRecap() {
@@ -558,7 +557,21 @@
                     </div>
                 `;
 
-                // 3. Inject HTML, tambahkan kelas, dan panggil print
+                // 3. Inject F4 page style (BARU)
+                // Ini menambahkan @page { size: F4 } HANYA untuk print ini
+                const f4Style = document.createElement('style');
+                f4Style.id = 'f4-print-style'; // Beri ID agar bisa dihapus nanti
+                f4Style.innerHTML = `
+                    @media print {
+                        @page {
+                            size: 215mm 330mm; /* Ukuran kertas F4 */
+                            margin: 20mm; /* Margin 2cm */
+                        }
+                    }
+                `;
+                document.head.appendChild(f4Style);
+
+                // 4. Inject HTML, tambahkan kelas, dan panggil print
                 recapPrintArea.innerHTML = html;
                 document.body.classList.add('printing-recap');
                 window.print();
@@ -712,6 +725,12 @@
             window.addEventListener('afterprint', () => {
                 document.body.classList.remove('printing-recap');
                 recapPrintArea.innerHTML = ''; // Kosongkan area cetak
+
+                // Hapus style F4 yang dinamis (BARU)
+                const f4Style = document.getElementById('f4-print-style');
+                if (f4Style) {
+                    f4Style.remove();
+                }
             });
 
             // ===================================
