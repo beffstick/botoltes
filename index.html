@@ -6,8 +6,7 @@
     <title>Scan Barcode Botol</title>
     <!-- Memuat Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Memuat Pustaka HTML5-QRCode -->
-    <script src="https://unpkg.com/html5-qrcode" type="text/javascript"></script>
+    <!-- Pustaka HTML5-QRCode Dihapus -->
     <style>
         /* CSS untuk mengatur tampilan cetak */
         @media print {
@@ -53,16 +52,7 @@
             }
         }
 
-        /* Perbaikan untuk box pemindai */
-        #reader {
-            width: 100%;
-            border: 2px solid #e2e8f0;
-            border-radius: 8px;
-            overflow: hidden;
-            /* Menggunakan aspect-video (16:9) untuk rasio */
-            aspect-ratio: 16 / 10; 
-        }
-        #reader span { color: #64748b; }
+        /* CSS untuk reader kamera dihapus */
         
         /* Mencegah scroll saat modal terbuka */
         .modal-open { overflow: hidden; }
@@ -72,14 +62,25 @@
 
     <!-- Kontainer Utama -->
     <div class="bg-white shadow-2xl rounded-lg overflow-hidden w-full max-w-md sm:max-w-xl">
-        <!-- Bagian Pemindai -->
-        <div id="reader" class="w-full bg-gray-200"></div>
+        <!-- Bagian Pemindai Kamera Dihapus -->
 
         <!-- Bagian Informasi -->
         <div class="p-6 text-center">
             <h1 class="text-2xl font-bold text-gray-800 mb-2">Scan Barcode Botol</h1>
-            <p id="status-text" class="text-gray-500 mb-4">Arahkan kamera ke barcode botol...</p>
+            <p id="status-text" class="text-gray-500 mb-4">Letakkan kursor di input di bawah dan mulai pindai.</p>
             
+            <!-- Input Pindai Baru -->
+            <div class="my-6">
+                <label for="scan-input" class="sr-only">Input Barcode</label>
+                <input 
+                    type="text" 
+                    id="scan-input" 
+                    placeholder="Klik di sini & pindai dengan scanner..." 
+                    autofocus
+                    class="w-full p-4 border-2 border-blue-300 rounded-lg text-lg text-center shadow-inner"
+                >
+            </div>
+
             <div class="my-6">
                 <span class="text-lg text-gray-600">Jumlah Botol</span>
                 <div id="counter" class="text-6xl font-extrabold text-blue-600">
@@ -113,7 +114,6 @@
             <!-- Rincian Item Struk -->
             <div id="voucher-items-list" class="mb-4 space-y-2">
                 <!-- Item akan dimasukkan oleh JS di sini -->
-                <!-- Contoh: <div><span>Nama Botol</span><span>Rp1.000</span></div> -->
             </div>
             
             <!-- Total Struk -->
@@ -188,7 +188,7 @@
             // ===================================
             let scannedCount = 0;
             const targetCount = 5;
-            let html5QrcodeScanner;
+            // Variabel html5QrcodeScanner dihapus
             
             // State baru untuk database dan rekap
             let bottleMasterData = new Map(); // Map(barcode, {name, price})
@@ -206,6 +206,7 @@
             // ===================================
             const counterElement = document.getElementById('counter');
             const statusTextElement = document.getElementById('status-text');
+            const scanInputElement = document.getElementById('scan-input'); // Input baru
 
             // DOM Modal Struk
             const modalElement = document.getElementById('popup-modal');
@@ -260,7 +261,13 @@
                 const price = parseInt(priceInputElement.value) || 0;
 
                 if (!barcode || !name) {
-                    alert('Nomor Barcode dan Nama Botol tidak boleh kosong!');
+                    // Menggunakan notifikasi kustom, bukan alert()
+                    statusTextElement.textContent = 'Nomor Barcode dan Nama Botol tidak boleh kosong!';
+                    statusTextElement.classList.add('text-red-500');
+                    setTimeout(() => {
+                         statusTextElement.textContent = 'Letakkan kursor di input di bawah dan mulai pindai.';
+                         statusTextElement.classList.remove('text-red-500');
+                    }, 3000);
                     return;
                 }
 
@@ -330,18 +337,20 @@
             function hideRecapModal() {
                 recapModalElement.classList.add('hidden');
                 document.body.classList.remove('modal-open');
+                scanInputElement.focus(); // Fokus kembali ke input scan
             }
 
             // ===================================
             // === FUNGSI LOGIKA SCANNER
             // ===================================
 
-            function onScanSuccess(decodedText, decodedResult) {
+            // Mengganti onScanSuccess menjadi processScan
+            function processScan(decodedText) {
                 if (!modalElement.classList.contains('hidden') || !recapModalElement.classList.contains('hidden')) {
                     return; // Jangan proses jika modal terbuka
                 }
 
-                console.log(`Scan berhasil: ${decodedText}`);
+                console.log(`Scan diproses: ${decodedText}`);
                 
                 // 1. Cari info botol di database
                 const bottleInfo = bottleMasterData.get(decodedText) || { name: 'Botol Tidak Dikenal', price: 0 };
@@ -365,16 +374,12 @@
 
                 // 5. Cek jika sudah mencapai target
                 if (scannedCount >= targetCount) {
-                    if (html5QrcodeScanner) {
-                        html5QrcodeScanner.clear().catch(error => console.error("Gagal stop pemindai.", error));
-                    }
+                    // Tidak perlu stop scanner
                     showVoucherPopup();
                 }
             }
 
-            function onScanError(errorMessage) {
-                // Abaikan
-            }
+            // Fungsi onScanError dan startScanner dihapus
 
             function showVoucherPopup() {
                 // Isi data struk
@@ -404,27 +409,9 @@
                 modalElement.classList.remove('hidden');
                 document.body.classList.add('modal-open');
             }
-
-            function startScanner() {
-                // Konfigurasi baru untuk scanner
-                const config = {
-                    fps: 10,
-                    // qrbox dibuat responsif, 70% dari lebar/tinggi terkecil
-                    qrbox: (viewfinderWidth, viewfinderHeight) => {
-                        let minEdge = Math.min(viewfinderWidth, viewfinderHeight);
-                        let qrboxSize = Math.floor(minEdge * 0.7);
-                        return { width: qrboxSize, height: qrboxSize };
-                    },
-                    rememberLastUsedCamera: true,
-                    supportedScanTypes: [Html5QrcodeScanType.SCAN_TYPE_CAMERA]
-                };
-
-                html5QrcodeScanner = new Html5QrcodeScanner("reader", config, false);
-                html5QrcodeScanner.render(onScanSuccess, onScanError);
-                statusTextElement.textContent = "Mohon izinkan akses kamera...";
-            }
             
-            function resetScanner() {
+            // Mengganti resetScanner menjadi resetSession
+            function resetSession() {
                 // Sembunyikan modal
                 modalElement.classList.add('hidden');
                 document.body.classList.remove('modal-open');
@@ -435,16 +422,32 @@
                 
                 // Perbarui UI
                 counterElement.textContent = `${scannedCount} / ${targetCount}`;
-                statusTextElement.textContent = "Arahkan kamera ke barcode botol...";
+                statusTextElement.textContent = "Siap untuk memindai...";
                 updateRecapListUI();
                 
-                // Mulai lagi pemindai
-                startScanner();
+                // Fokus kembali ke input
+                scanInputElement.value = '';
+                scanInputElement.focus();
             }
 
             // ===================================
             // === EVENT LISTENERS
             // ===================================
+
+            // Listener baru untuk input scan
+            scanInputElement.addEventListener('keydown', (e) => {
+                // Cek jika tombol 'Enter' ditekan
+                if (e.key === 'Enter' || e.keyCode === 13) {
+                    e.preventDefault(); // Mencegah perilaku default 'Enter'
+                    const barcode = scanInputElement.value.trim();
+                    
+                    if (barcode) {
+                        processScan(barcode); // Proses barcode
+                    }
+                    
+                    scanInputElement.value = ''; // Kosongkan input
+                }
+            });
 
             // Tombol Cetak Struk
             printButton.addEventListener('click', () => {
@@ -452,7 +455,7 @@
             });
 
             // Tombol Tutup Struk & Pindai Lagi
-            closeButton.addEventListener('click', resetScanner);
+            closeButton.addEventListener('click', resetSession); // Panggil resetSession
 
             // Tombol Buka Rekap/Database
             recapButton.addEventListener('click', showRecapModal);
@@ -467,7 +470,7 @@
             // === INISIALISASI APLIKASI
             // ===================================
             loadMasterData(); // Muat database dari localStorage
-            startScanner(); // Mulai pemindai
+            scanInputElement.focus(); // Fokus ke input saat memuat halaman
         });
     </script>
 </body>
