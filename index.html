@@ -151,7 +151,7 @@
     <!-- ============================== -->
     <div id="recap-modal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-40 hidden">
         <div class="bg-white rounded-lg shadow-xl p-8 max-w-xl w-full max-h-[90vh] flex flex-col">
-            <h2 class="text-2xl font-bold text-gray-800 mb-6">Database Botol & Rekap Sesi</h2>
+            <h2 class="text-2xl font-bold text-gray-800 mb-6">Database Botol & Rekap Harian</h2>
             
             <!-- Form Tambah/Edit Master Data -->
             <div class="bg-gray-50 p-4 rounded-lg mb-6">
@@ -175,12 +175,21 @@
                 </div>
             </div>
 
-            <!-- Rekap Sesi Ini -->
+            <!-- Rekap Harian (Menggantikan Rekap Sesi Ini) -->
             <div class="flex-1 overflow-y-auto">
-                <h3 class="text-lg font-semibold mb-3">Rekap Sesi Ini (Total: <span id="recap-count">0</span>)</h3>
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-lg font-semibold">Rekap Harian</h3>
+                    <input type="date" id="recap-date-picker" class="p-2 border rounded text-sm">
+                </div>
+                
+                <div class="mb-2 text-sm font-medium text-gray-700">
+                    Total Botol: <span id="recap-count" class="font-bold text-blue-600">0</span> | 
+                    Total Pemasukan: <span id="recap-total-price" class="font-bold text-green-600">Rp0</span>
+                </div>
+
                 <div id="recap-list" class="space-y-2 max-h-40 overflow-y-auto border p-3 rounded">
                     <!-- Scanned items list populated by JS -->
-                    <p class="text-gray-500">Belum ada botol yang dipindai.</p>
+                    <p class="text-gray-500">Pilih tanggal untuk melihat rekap.</p>
                 </div>
             </div>
 
@@ -202,7 +211,8 @@
             
             // State baru untuk database dan rekap
             let bottleMasterData = new Map(); // Map(barcode, {name, price})
-            let scannedBottles = []; // Array dari {barcode, name, price}
+            let scannedBottles = []; // Array dari {barcode, name, price} (HANYA SESI INI)
+            let dailyRecapData = []; // Array dari semua transaksi (PERMANEN)
 
             // Fungsi format Rupiah
             const formatter = new Intl.NumberFormat('id-ID', {
@@ -238,6 +248,8 @@
             const masterDataListElement = document.getElementById('master-data-list');
             const recapListElement = document.getElementById('recap-list');
             const recapCountElement = document.getElementById('recap-count');
+            const recapDatePicker = document.getElementById('recap-date-picker'); // Elemen baru
+            const recapTotalPriceElement = document.getElementById('recap-total-price'); // Elemen baru
 
             // ===================================
             // === FUNGSI DATABASE (LOCALSTORAGE)
@@ -250,11 +262,13 @@
                 updateMasterDataListUI();
             }
 
-            function loadMasterData() {
-                const dataString = localStorage.getItem('bottleMasterData');
-                if (dataString) {
+            // Mengganti nama loadMasterData menjadi loadPersistentData
+            function loadPersistentData() {
+                // Load Master Data
+                const masterDataString = localStorage.getItem('bottleMasterData');
+                if (masterDataString) {
                     try {
-                        const dataArray = JSON.parse(dataString);
+                        const dataArray = JSON.parse(masterDataString);
                         bottleMasterData = new Map(dataArray);
                         console.log('Database dimuat:', bottleMasterData);
                     } catch (e) {
@@ -263,6 +277,25 @@
                     }
                 }
                 updateMasterDataListUI();
+
+                // Load Recap Data
+                const recapDataString = localStorage.getItem('dailyRecapData');
+                if (recapDataString) {
+                    try {
+                        dailyRecapData = JSON.parse(recapDataString);
+                        console.log('Data rekap dimuat:', dailyRecapData);
+                    } catch (e) {
+                        console.error('Gagal memuat rekap:', e);
+                        dailyRecapData = [];
+                    }
+                }
+            }
+
+            // Fungsi baru untuk menyimpan rekap
+            function saveDailyRecap(transaction) {
+                dailyRecapData.push(transaction);
+                localStorage.setItem('dailyRecapData', JSON.stringify(dailyRecapData));
+                console.log('Rekap harian disimpan:', transaction);
             }
             
             function handleAddMasterData() {
@@ -314,16 +347,35 @@
                 });
             }
 
-            function updateRecapListUI() {
+            // Mengganti updateRecapListUI menjadi updateDailyRecapUI
+            function updateDailyRecapUI(selectedDate) {
                 recapListElement.innerHTML = ''; // Kosongkan
-                recapCountElement.textContent = scannedBottles.length;
+                
+                // Filter transaksi untuk tanggal yang dipilih
+                const dailyTransactions = dailyRecapData.filter(tx => 
+                    tx.date.startsWith(selectedDate)
+                );
 
-                if (scannedBottles.length === 0) {
-                    recapListElement.innerHTML = '<p class="text-gray-500">Belum ada botol yang dipindai.</p>';
+                if (dailyTransactions.length === 0) {
+                    recapListElement.innerHTML = '<p class="text-gray-500">Tidak ada data untuk tanggal ini.</p>';
+                    recapCountElement.textContent = '0';
+                    recapTotalPriceElement.textContent = formatter.format(0);
                     return;
                 }
-                
-                scannedBottles.forEach((botol, index) => {
+
+                let allBottles = [];
+                let totalDailyPrice = 0;
+
+                // Gabungkan semua botol dari semua transaksi di hari itu
+                dailyTransactions.forEach(tx => {
+                    allBottles = allBottles.concat(tx.items);
+                    totalDailyPrice += tx.total;
+                });
+
+                recapCountElement.textContent = allBottles.length;
+                recapTotalPriceElement.textContent = formatter.format(totalDailyPrice);
+
+                allBottles.forEach((botol, index) => {
                     const item = document.createElement('div');
                     item.className = 'p-2 bg-white border rounded text-sm flex justify-between';
                     item.innerHTML = `
@@ -339,7 +391,12 @@
 
             function showRecapModal() {
                 updateMasterDataListUI();
-                updateRecapListUI();
+                
+                // Atur pemilih tanggal ke hari ini & panggil rekap
+                const today = getTodayDateString();
+                recapDatePicker.value = today;
+                updateDailyRecapUI(today);
+                
                 recapModalElement.classList.remove('hidden');
                 document.body.classList.add('modal-open');
             }
@@ -394,8 +451,9 @@
             function showVoucherPopup() {
                 // Isi data struk
                 const now = new Date();
+                const txId = `TX-${Date.now()}`;
                 voucherDateElement.textContent = now.toLocaleString('id-ID', { dateStyle: 'long', timeStyle: 'short' });
-                voucherIdElement.textContent = `TX-${Date.now()}`;
+                voucherIdElement.textContent = txId;
                 
                 // Kosongkan daftar item & hitung total
                 voucherItemsListElement.innerHTML = '';
@@ -414,6 +472,15 @@
                 
                 // Tampilkan total
                 voucherTotalPriceElement.textContent = formatter.format(totalPrice);
+
+                // BARU: Simpan Transaksi ke Rekap Harian
+                const transaction = {
+                    id: txId,
+                    date: now.toISOString(), // Simpan sebagai ISO string untuk filter
+                    items: [...scannedBottles], // Salin array
+                    total: totalPrice
+                };
+                saveDailyRecap(transaction);
                 
                 // Tampilkan modal
                 modalElement.classList.remove('hidden');
@@ -433,7 +500,7 @@
                 // Perbarui UI
                 counterElement.textContent = `${scannedCount} / ${targetCount}`;
                 statusTextElement.textContent = "Siap untuk memindai...";
-                updateRecapListUI();
+                // updateRecapListUI() dihapus dari sini karena rekap harian permanen
                 
                 // Fokus kembali ke input
                 scanInputElement.value = '';
@@ -470,6 +537,11 @@
             // Tombol Buka Rekap/Database
             recapButton.addEventListener('click', showRecapModal);
 
+            // Listener baru untuk pemilih tanggal rekap
+            recapDatePicker.addEventListener('change', (e) => {
+                updateDailyRecapUI(e.target.value);
+            });
+
             // Tombol Tutup Rekap/Database
             closeRecapButton.addEventListener('click', hideRecapModal);
 
@@ -479,7 +551,17 @@
             // ===================================
             // === INISIALISASI APLIKASI
             // ===================================
-            loadMasterData(); // Muat database dari localStorage
+
+            // Fungsi helper baru untuk mendapatkan tanggal YYYY-MM-DD
+            function getTodayDateString() {
+                const today = new Date();
+                const year = today.getFullYear();
+                const month = (today.getMonth() + 1).toString().padStart(2, '0');
+                const day = today.getDate().toString().padStart(2, '0');
+                return `${year}-${month}-${day}`;
+            }
+
+            loadPersistentData(); // Ganti dari loadMasterData()
             scanInputElement.focus(); // Fokus ke input saat memuat halaman
         });
     </script>
